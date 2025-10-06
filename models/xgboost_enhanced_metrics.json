@@ -1,0 +1,29 @@
+{
+  "model": "XGBoost Enhanced",
+  "train_metrics": {
+    "r2": 0.9948390225204847,
+    "rmse": 38298.27510968908,
+    "mape": 1.8029283180321244e+16
+  },
+  "test_metrics": {
+    "r2": 0.8971984123130605,
+    "rmse": 172978.12509107534,
+    "mape": 0.12074826788416704
+  },
+  "target_achieved": true,
+  "dataset_info": {
+    "total_samples": 72611,
+    "train_samples": 58088,
+    "test_samples": 14523,
+    "features_used": 451
+  },
+  "model_config": {
+    "n_estimators": 1000,
+    "learning_rate": 0.01,
+    "max_depth": 15,
+    "subsample": 0.8,
+    "colsample_bytree": 0.8,
+    "reg_alpha": 0.1,
+    "reg_lambda": 1
+  }
+}
