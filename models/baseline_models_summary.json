@@ -1,0 +1,120 @@
+{
+  "evaluation_timestamp": "2025-10-06T00:41:24.621201",
+  "dataset_info": {
+    "total_samples": 72611,
+    "train_samples": 58088,
+    "test_samples": 14523,
+    "features_count": 451,
+    "target_variable": "ClosePrice"
+  },
+  "models_evaluated": 9,
+  "best_model": {
+    "name": "Random Forest",
+    "r2_score": 0.8841675013319712,
+    "rmse": 183614.29388546848,
+    "mae": 117213.41355288657,
+    "mape": 0.12927932055156335,
+    "training_time": 31.935479
+  },
+  "all_results": [
+    {
+      "model_name": "Linear Regression",
+      "scaling": "None",
+      "test_r2": 0.812870287844869,
+      "cv_r2_mean": 0.807435585937785,
+      "cv_r2_std": 0.004460444605548278,
+      "rmse": 233379.47000427713,
+      "mae": 165155.37356358464,
+      "mape": 0.19544786904164954,
+      "training_time": 2.243977
+    },
+    {
+      "model_name": "Ridge Regression",
+      "scaling": "StandardScaler",
+      "test_r2": 0.8128705880892592,
+      "cv_r2_mean": NaN,
+      "cv_r2_std": NaN,
+      "rmse": 233379.2827787855,
+      "mae": 165154.80392825222,
+      "mape": 0.1954464992856192,
+      "training_time": 0.480787
+    },
+    {
+      "model_name": "Lasso Regression",
+      "scaling": "StandardScaler",
+      "test_r2": 0.812872681783044,
+      "cv_r2_mean": NaN,
+      "cv_r2_std": NaN,
+      "rmse": 233377.97719535098,
+      "mae": 165153.61434005472,
+      "mape": 0.19544475700668726,
+      "training_time": 274.523515
+    },
+    {
+      "model_name": "Elastic Net",
+      "scaling": "StandardScaler",
+      "test_r2": 0.7763477788714823,
+      "cv_r2_mean": 0.7722434942977969,
+      "cv_r2_std": 0.00391214455871941,
+      "rmse": 255139.6070129265,
+      "mae": 176832.39416128965,
+      "mape": 0.2024048500230098,
+      "training_time": 11.305173
+    },
+    {
+      "model_name": "Decision Tree",
+      "scaling": "None",
+      "test_r2": 0.8428225937083491,
+      "cv_r2_mean": 0.8367768847369937,
+      "cv_r2_std": 0.004192308449148635,
+      "rmse": 213887.95757295654,
+      "mae": 140756.6919006023,
+      "mape": 0.15408757912850804,
+      "training_time": 1.762761
+    },
+    {
+      "model_name": "Random Forest",
+      "scaling": "None",
+      "test_r2": 0.8841675013319712,
+      "cv_r2_mean": 0.8816985190493227,
+      "cv_r2_std": 0.0021687250673718835,
+      "rmse": 183614.29388546848,
+      "mae": 117213.41355288657,
+      "mape": 0.12927932055156335,
+      "training_time": 31.935479
+    },
+    {
+      "model_name": "Gradient Boosting",
+      "scaling": "None",
+      "test_r2": 0.8838489120297461,
+      "cv_r2_mean": 0.8825757111161655,
+      "cv_r2_std": 0.0018048811629999073,
+      "rmse": 183866.62972511258,
+      "mae": 120256.29933495345,
+      "mape": 0.13359899846134518,
+      "training_time": 85.452271
+    },
+    {
+      "model_name": "Support Vector Regression",
+      "scaling": "StandardScaler",
+      "test_r2": -0.06077425321144836,
+      "cv_r2_mean": -0.06138517635242895,
+      "cv_r2_std": 0.009175715620724322,
+      "rmse": 555651.8434626642,
+      "mae": 405874.7836324512,
+      "mape": 0.4776346687385686,
+      "training_time": 30.858218
+    },
+    {
+      "model_name": "K-Nearest Neighbors",
+      "scaling": "MinMaxScaler",
+      "test_r2": 0.7897631483654172,
+      "cv_r2_mean": 0.7848240440111971,
+      "cv_r2_std": 0.002956736983389055,
+      "rmse": 247369.24102798957,
+      "mae": 158095.611119781,
+      "mape": 0.17568687836496055,
+      "training_time": 0.393907
+    }
+  ]
+}
