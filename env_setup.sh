@@ -18,13 +18,16 @@ else
 fi
 
 ENV_NAME=${ENV_NAME:-home-price-env}
-PYTHON_VERSION=${PYTHON_VERSION:-3.10}
+PYTHON_VERSION=${PYTHON_VERSION:-3.9}
 
 echo "=========================================="
 echo "Setting up home-price-prediction environment on Amarel"
 echo "=========================================="
 echo "Environment name: '$ENV_NAME'"
 echo "Python version: $PYTHON_VERSION"
+
+# Remove environment if it exists
+conda remove -n "$ENV_NAME" --all -y 2>/dev/null || true
 
 # Try to use mamba if available for speed, otherwise conda
 if command -v mamba >/dev/null 2>&1; then
@@ -39,32 +42,34 @@ fi
 echo "Activating environment..."
 conda activate "$ENV_NAME"
 
+# Install core packages using conda (pre-compiled binaries, no compilation needed)
+echo "Installing core packages via conda..."
+conda install -c conda-forge numpy pandas scikit-learn -y
+
+# Install ML packages via conda
+echo "Installing ML packages..."
+conda install -c conda-forge xgboost lightgbm -y
+
+# Install stats packages via conda
+echo "Installing statistical packages..."
+conda install -c conda-forge scipy statsmodels -y
+
+# Install plotting libraries via conda
+echo "Installing plotting libraries..."
+conda install -c conda-forge matplotlib seaborn plotly -y
+
+# Install Jupyter and papermill via conda
+echo "Installing Jupyter and papermill..."
+conda install -c conda-forge jupyter jupyterlab papermill nbconvert nbformat -y
+
 # Upgrade pip
 echo "Upgrading pip..."
 pip install --upgrade pip
 
-# Install core packages
-echo "Installing core packages..."
-pip install numpy pandas scikit-learn
-
-# Install ML packages
-echo "Installing ML packages..."
-pip install xgboost lightgbm catboost
-pip install scipy statsmodels
-
-# Install plotting libraries
-echo "Installing plotting libraries..."
-pip install matplotlib seaborn plotly
-
-# Install Jupyter and notebook execution tools
-echo "Installing Jupyter and papermill..."
-pip install jupyter jupyterlab
-pip install papermill nbconvert nbformat
-
 # Install additional requirements from requirements.txt if present
 if [ -f requirements.txt ]; then
     echo "Installing from requirements.txt..."
-    pip install -r requirements.txt
+    pip install -r requirements.txt 2>&1 | grep -v "already satisfied" || true
 fi
 
 # Verify installation
