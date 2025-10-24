@@ -16,42 +16,41 @@ pwd
 
 ## Step 2: Upload Project from Local Machine
 
-**STOP: Go back to your LOCAL machine (PowerShell or Git Bash) and run:**
+**STOP: Go back to your LOCAL machine (PowerShell) and run:**
 
-```bash
-# On YOUR LOCAL MACHINE (not Amarel)
-cd /c/Users/lpnhu/Downloads/home-price-prediction
+```powershell
+# On YOUR LOCAL MACHINE (PowerShell)
+cd C:\Users\lpnhu\Downloads\home-price-prediction
 
-# Upload project (excludes .git, .venv, data)
-rsync -avz --exclude='.git' --exclude='.venv' --exclude='data/' --exclude='filled_data/' \
-  ./ hpl14@amarel.rutgers.edu:~/home-price-prediction/
+# Upload entire project (scp will skip .git, .venv if on remote)
+# This uploads the whole folder to Amarel
+scp -r . hpl14@amarel.rutgers.edu:~/home-price-prediction/
 
-echo "✓ Project uploaded"
+Write-Output "✓ Project uploaded"
 ```
 
-**Wait for this to complete** (should take 2-5 minutes), then come back to SSH terminal.
+**Wait for this to complete** (should take 2-5 minutes). This uploads everything including notebooks and scripts.
 
 ---
 
 ## Step 3: Upload Data (from Local Machine)
 
-**Still on YOUR LOCAL MACHINE, run:**
+**Still on YOUR LOCAL MACHINE (PowerShell), run:**
 
-```bash
-# On YOUR LOCAL MACHINE
-cd /c/Users/lpnhu/Downloads/home-price-prediction
+```powershell
+# On YOUR LOCAL MACHINE (PowerShell)
+cd C:\Users\lpnhu\Downloads\home-price-prediction
 
-# Create scratch directory and upload data
+# Create scratch directory on Amarel
 ssh hpl14@amarel.rutgers.edu "mkdir -p /scratch/hpl14/home-price-data"
 
-# Upload filled_data (the main data you need)
-rsync -avz --progress filled_data/ \
-  hpl14@amarel.rutgers.edu:/scratch/hpl14/home-price-data/filled_data/
+# Upload filled_data folder (the main data you need)
+scp -r filled_data hpl14@amarel.rutgers.edu:/scratch/hpl14/home-price-data/
 
-echo "✓ Data uploaded"
+Write-Output "✓ Data uploaded"
 ```
 
-**Wait for this to complete** (may take 5-10 minutes depending on size).
+**Wait for this to complete** (may take 5-15 minutes depending on your data size). You'll see transfer progress on screen.
 
 ---
 
@@ -229,21 +228,19 @@ sacct -u hpl14 --format=JobID,JobName,State,ExitCode
 
 ## Step 14: Download Results (from Local Machine)
 
-**Back on YOUR LOCAL MACHINE, run:**
+**Back on YOUR LOCAL MACHINE (PowerShell), run:**
 
-```bash
-# From PowerShell or Git Bash on your laptop
-cd /c/Users/lpnhu/Downloads/home-price-prediction
+```powershell
+# From PowerShell on your laptop
+cd C:\Users\lpnhu\Downloads\home-price-prediction
 
 # Download executed notebooks
-rsync -avz hpl14@amarel.rutgers.edu:~/home-price-prediction/executed_notebooks/ \
-  /c/Users/lpnhu/Downloads/home-price-prediction/executed_notebooks/
+scp -r hpl14@amarel.rutgers.edu:~/home-price-prediction/executed_notebooks ./
 
 # Download models and outputs
-rsync -avz hpl14@amarel.rutgers.edu:~/home-price-prediction/models/ \
-  /c/Users/lpnhu/Downloads/home-price-prediction/models/
+scp -r hpl14@amarel.rutgers.edu:~/home-price-prediction/models ./
 
-echo "✓ Results downloaded"
+Write-Output "✓ Results downloaded"
 ```
 
 Open the executed notebooks in Jupyter to see results!
@@ -267,11 +264,17 @@ Open the executed notebooks in Jupyter to see results!
 
 ## Troubleshooting
 
-**Q: "rsync: command not found"**
-- Use Git Bash, not PowerShell (PowerShell doesn't have rsync by default)
+**Q: "scp: command not found"**
+- Make sure OpenSSH is installed (Windows 10+ has it built-in)
+- Or install via PowerShell: `winget install OpenSSH.Client`
 
 **Q: "No such file or directory: filled_data"**
+- Make sure you're in the right directory: `pwd` should show `C:\Users\lpnhu\Downloads\home-price-prediction`
 - Make sure you uploaded data in Step 3 before running setup
+
+**Q: "Permission denied"**
+- Check your SSH key setup: `ssh hpl14@amarel.rutgers.edu` should work
+- Or use password authentication when prompted
 
 **Q: "module load conda" doesn't work**
 - Try: `module load miniconda3` or `module avail | grep conda`
