@@ -7,6 +7,16 @@
 
 set -e  # Exit on error
 
+# Initialize conda if not already initialized
+if [ -f "$HOME/miniconda3/etc/profile.d/conda.sh" ]; then
+    source "$HOME/miniconda3/etc/profile.d/conda.sh"
+elif [ -f "$HOME/anaconda3/etc/profile.d/conda.sh" ]; then
+    source "$HOME/anaconda3/etc/profile.d/conda.sh"
+else
+    echo "ERROR: Conda not found. Please install miniconda first."
+    exit 1
+fi
+
 ENV_NAME=${ENV_NAME:-home-price-env}
 PYTHON_VERSION=${PYTHON_VERSION:-3.10}
 
@@ -27,7 +37,6 @@ fi
 
 # Activate environment
 echo "Activating environment..."
-source "$HOME/.bashrc" >/dev/null 2>&1 || true
 conda activate "$ENV_NAME"
 
 # Upgrade pip

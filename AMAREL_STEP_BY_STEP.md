@@ -111,11 +111,8 @@ salloc -N 1 -n 8 --mem=32GB -t 4:00:00
 ## Step 8: Set Up Conda Environment
 
 ```bash
-# Now that you're on a computing node, load conda and run setup
-module purge
-module load conda
-
 # Run setup script (takes ~10-15 minutes)
+# Note: env_setup.sh will automatically initialize conda
 cd ~/home-price-prediction
 bash env_setup.sh
 
