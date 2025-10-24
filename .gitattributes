@@ -1,4 +1,12 @@
-*.csv filter=lfs diff=lfs merge=lfs -text
-*.joblib filter=lfs diff=lfs merge=lfs -text
+# Git LFS configuration for large binary artifacts
+# IMPORTANT: Keep patterns specific to avoid accidentally tracking all files
+# 
+# The following files were previously committed with LFS and remain tracked:
 data/cleaned_enhanced.csv filter=lfs diff=lfs merge=lfs -text
 models/xgboost_enhanced.joblib filter=lfs diff=lfs merge=lfs -text
+#
+# WARNING: Do NOT add broad patterns like *.csv or *.joblib here!
+# They will cause Git LFS to try uploading ALL matching files in your repo.
+# 
+# If you need to track new large files with LFS, add specific paths only:
+#   models/specific_model.joblib filter=lfs diff=lfs merge=lfs -text
