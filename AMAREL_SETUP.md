@@ -9,146 +9,171 @@ This guide will help you run your Jupyter notebooks on Rutgers' Amarel HPC clust
 
 ## Step 1: Upload Your Project to Amarel
 
-### Option A: Using rsync (Recommended - excludes unnecessary files)
+### Option A: Using rsync from Git Bash (Recommended)
 
-From your local PowerShell or Git Bash:
+Open **Git Bash** (not PowerShell - rsync works better there):
 
 ```bash
+cd /c/Users/lpnhu/Downloads/home-price-prediction
+
 # Upload project files (excludes .git, .venv, data folders)
 rsync -avz --exclude='.git' --exclude='.venv' --exclude='data/' --exclude='filled_data/' \
-  /c/Users/lpnhu/Downloads/home-price-prediction/ \
-  hpl14@amarel.rutgers.edu:~/home-price-prediction/
+  ./ hpl14@amarel.rutgers.edu:~/home-price-prediction/
 ```
 
-### Option B: Using SCP
+### Option B: Using SCP from PowerShell
 
-```bash
-# From PowerShell/Git Bash (may be slower)
-scp -r c:\Users\lpnhu\Downloads\home-price-prediction hpl14@amarel.rutgers.edu:~/
+From PowerShell:
+
+```powershell
+# Upload entire project (slower, includes everything)
+scp -r "c:\Users\lpnhu\Downloads\home-price-prediction" hpl14@amarel.rutgers.edu:~/
 ```
 
-### Upload Your Data Separately
+### Step 1b: Upload Your Data to Scratch Storage
 
-The data should be uploaded to Amarel's scratch storage for better performance:
+Use **Git Bash** (data transfers work better with rsync):
 
 ```bash
-# Upload filled_data (the source data with lat/lon)
-rsync -avz --progress /c/Users/lpnhu/Downloads/home-price-prediction/filled_data/ \
-  hpl14@amarel.rutgers.edu:/scratch/hpl14/home-price-data/filled_data/
+cd /c/Users/lpnhu/Downloads/home-price-prediction
 
-# Upload data folder if needed
-rsync -avz --progress /c/Users/lpnhu/Downloads/home-price-prediction/data/ \
-  hpl14@amarel.rutgers.edu:/scratch/hpl14/home-price-data/data/
+# Create scratch directory on Amarel and upload filled_data
+rsync -avz --progress filled_data/ hpl14@amarel.rutgers.edu:/scratch/hpl14/home-price-data/filled_data/
+
+# Optional: Also upload data folder if you have processed outputs
+rsync -avz --progress data/ hpl14@amarel.rutgers.edu:/scratch/hpl14/home-price-data/data/
 ```
 
 ## Step 2: Set Up Environment on Amarel
 
-SSH into Amarel:
+SSH into Amarel (from PowerShell or Git Bash):
 
 ```bash
 ssh hpl14@amarel.rutgers.edu
 ```
 
-Navigate to your project and set up the environment:
+Once connected, navigate to your project and set up the environment:
 
 ```bash
+# Go to your project directory
 cd ~/home-price-prediction
 
-# Create logs directory
+# Create logs directory for job outputs
 mkdir -p logs
 
-# Run environment setup (this takes ~10-15 minutes)
+# Run environment setup (takes ~10-15 minutes first time)
 bash env_setup.sh
+
+# Verify installation worked
+python -c "import papermill; print('✓ Ready to run notebooks')"
 ```
 
-## Step 3: Update Notebook Paths for Amarel
+## Step 3: Create Symlinks to Data (Optional but Recommended)
 
-You'll need to update the paths in your notebooks to point to the scratch storage. Edit `notebooks_clean/02_preprocessing.ipynb` (and others) to use:
-
-```python
-# Change from:
-ROOT = Path(r"c:\Users\lpnhu\Downloads\home-price-prediction")
-
-# To:
-ROOT = Path("/scratch/hpl14/home-price-data")
-# or keep home directory for outputs:
-ROOT = Path.home() / "home-price-prediction"
-```
-
-Or create a symlink to avoid editing notebooks:
+This way you don't need to edit notebook paths:
 
 ```bash
+# Still on Amarel, in ~/home-price-prediction
 cd ~/home-price-prediction
+
+# Create symlinks to scratch storage
 ln -s /scratch/hpl14/home-price-data/filled_data filled_data
 ln -s /scratch/hpl14/home-price-data/data data
+
+# Verify symlinks work
+ls -lh filled_data/ data/
 ```
+
+If you prefer to keep notebooks as-is without symlinks, edit the notebook paths:
+- Change `ROOT = Path(r"c:\Users\...")` to `ROOT = Path.home() / "home-price-prediction"`
+- Or change `RAW_DATA_DIR = ROOT / 'filled_data'` to `RAW_DATA_DIR = Path("/scratch/hpl14/home-price-data/filled_data")`
 
 ## Step 4: Run Notebooks
 
-### Option A: Run All Notebooks in Parallel (Fastest - ~30-60 min total)
+All commands below run on Amarel (while SSH'd in).
+
+### Option A: Run All Notebooks in Parallel (FASTEST - 30-60 min total)
 
 ```bash
 cd ~/home-price-prediction
+
+# Submit all 6 notebooks as parallel array job
 sbatch run_notebooks_array.sbatch
-```
 
-This submits 6 jobs simultaneously, one for each notebook. Check status:
-
-```bash
 # Check job status
 squeue -u hpl14
 
-# Watch output in real-time (replace JOBID)
+# Watch output in real-time (job ID shown by squeue)
 tail -f logs/notebook_array_JOBID_0.out
 ```
 
-### Option B: Run One Notebook at a Time
+### Option B: Run One Notebook
 
 ```bash
-# Run a specific notebook
+cd ~/home-price-prediction
+
+# Run a specific notebook (waits for completion)
 sbatch run_notebook.sbatch notebooks_clean/02_preprocessing.ipynb
 
-# Run multiple notebooks sequentially
-sbatch run_notebook.sbatch notebooks_clean/02_preprocessing.ipynb
-sbatch run_notebook.sbatch notebooks_clean/03_baseline_linear_models.ipynb
-sbatch run_notebook.sbatch notebooks_clean/04_advanced_models_tuning.ipynb
+# Check status
+squeue -u hpl14
 ```
 
-## Step 5: Monitor Jobs
+### Option C: Run Notebooks Sequentially
 
 ```bash
-# Check all your jobs
+cd ~/home-price-prediction
+
+# Submit jobs that depend on each other (runs one after another)
+JOB1=$(sbatch --parsable run_notebook.sbatch notebooks_clean/01_data_loading.ipynb)
+JOB2=$(sbatch --parsable --dependency=afterok:$JOB1 run_notebook.sbatch notebooks_clean/02_preprocessing.ipynb)
+JOB3=$(sbatch --parsable --dependency=afterok:$JOB2 run_notebook.sbatch notebooks_clean/03_baseline_linear_models.ipynb)
+
+squeue -u hpl14
+```
+
+## Step 5: Monitor & Troubleshoot Jobs
+
+Monitor progress while running:
+
+```bash
+# Check all your running/completed jobs
 squeue -u hpl14
 
-# Check job details
+# Get detailed job info
 scontrol show job JOBID
 
-# View output logs (replace JOBID with actual number)
-cat logs/notebook_JOBID.out
-cat logs/notebook_JOBID.err
+# View real-time output
+tail -f logs/notebook_array_JOBID_0.out
 
-# Watch live output
-tail -f logs/notebook_JOBID.out
+# View error log if something failed
+cat logs/notebook_array_JOBID_0.err
+
+# Get resource usage stats (after job completes)
+sacct -j JOBID --format=JobID,MaxRSS,Elapsed,ExitCode
 ```
 
-## Step 6: Download Results
+## Step 6: Download Results Back to Your Laptop
 
-After jobs complete, download the executed notebooks and models:
+From **PowerShell** or **Git Bash** on your local machine:
 
 ```bash
-# From your local machine (PowerShell/Git Bash)
-
-# Download executed notebooks
+# Option 1: Download executed notebooks only
 rsync -avz hpl14@amarel.rutgers.edu:~/home-price-prediction/executed_notebooks/ \
   /c/Users/lpnhu/Downloads/home-price-prediction/executed_notebooks/
 
-# Download models
+# Option 2: Download models and outputs
 rsync -avz hpl14@amarel.rutgers.edu:~/home-price-prediction/models/ \
   /c/Users/lpnhu/Downloads/home-price-prediction/models/
 
-# Download processed data
+# Option 3: Download processed data from scratch
 rsync -avz hpl14@amarel.rutgers.edu:/scratch/hpl14/home-price-data/data/ \
   /c/Users/lpnhu/Downloads/home-price-prediction/data/
+
+# Option 4: Download everything at once
+rsync -avz --exclude='.git' --exclude='filled_data' \
+  hpl14@amarel.rutgers.edu:~/home-price-prediction/ \
+  /c/Users/lpnhu/Downloads/home-price-prediction/
 ```
 
 ## Troubleshooting
