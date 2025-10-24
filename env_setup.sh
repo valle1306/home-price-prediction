@@ -42,29 +42,32 @@ fi
 echo "Activating environment..."
 conda activate "$ENV_NAME"
 
-# Install core packages using conda (pre-compiled binaries, no compilation needed)
-echo "Installing core packages via conda..."
-conda install -c conda-forge numpy pandas scikit-learn -y
+# Install packages using default conda channels (no internet required)
+echo "Installing core packages..."
+conda install numpy pandas scikit-learn -y
 
-# Install ML packages via conda
+# Install ML packages
 echo "Installing ML packages..."
-conda install -c conda-forge xgboost lightgbm -y
+conda install xgboost lightgbm -y
 
-# Install stats packages via conda
+# Install stats packages
 echo "Installing statistical packages..."
-conda install -c conda-forge scipy statsmodels -y
+conda install scipy statsmodels -y
 
-# Install plotting libraries via conda
+# Install plotting libraries
 echo "Installing plotting libraries..."
-conda install -c conda-forge matplotlib seaborn plotly -y
+conda install matplotlib seaborn plotly -y
 
-# Install Jupyter and papermill via conda
+# Install Jupyter and tools
 echo "Installing Jupyter and papermill..."
-conda install -c conda-forge jupyter jupyterlab papermill nbconvert nbformat -y
+conda install jupyter jupyterlab -y
 
-# Upgrade pip
+# Upgrade pip and install papermill via pip (smaller, faster)
 echo "Upgrading pip..."
-pip install --upgrade pip
+pip install --upgrade pip --no-index 2>/dev/null || pip install --upgrade pip
+
+echo "Installing papermill..."
+pip install papermill nbconvert nbformat 2>&1 | grep -v "already satisfied" || true
 
 # Install additional requirements from requirements.txt if present
 if [ -f requirements.txt ]; then
