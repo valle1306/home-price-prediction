@@ -94,14 +94,29 @@ mkdir -p executed_notebooks
 
 ---
 
-## Step 7: Set Up Conda Environment
+## Step 7: Request a Computing Node (IMPORTANT!)
+
+**⚠️ You MUST be on a computing node, not the login node!**
 
 ```bash
-# Load conda module
+# Request an interactive session on a computing node (4 hours, 8 CPUs, 32GB RAM)
+salloc -N 1 -n 8 --mem=32GB -t 4:00:00
+
+# Wait for the prompt to change from amarel2 to a node name like "node001"
+# Now you can run conda commands
+```
+
+---
+
+## Step 8: Set Up Conda Environment
+
+```bash
+# Now that you're on a computing node, load conda and run setup
 module purge
 module load conda
 
 # Run setup script (takes ~10-15 minutes)
+cd ~/home-price-prediction
 bash env_setup.sh
 
 # Wait for it to complete... (lots of output is normal)
@@ -116,10 +131,10 @@ Environment setup complete!
 
 ---
 
-## Step 8: Verify Installation
+## Step 9: Verify Installation
 
 ```bash
-# Activate environment
+# Activate environment (should already be active, but make sure)
 source activate home-price-env
 
 # Test imports
@@ -128,7 +143,7 @@ python -c "import papermill, pandas, xgboost; print('✓ All packages OK')"
 
 ---
 
-## Step 9: Create Symlinks to Data
+## Step 10: Create Symlinks to Data
 
 ```bash
 # Still in ~/home-price-prediction
@@ -145,10 +160,11 @@ ls -lh filled_data data
 
 ---
 
-## Step 10: Test One Notebook (Optional but Recommended)
+## Step 11: Test One Notebook (Optional but Recommended)
 
 ```bash
 # Test that everything works by running notebook 01 manually
+cd ~/home-price-prediction
 papermill notebooks_clean/01_data_loading.ipynb executed_notebooks/01_data_loading_test.ipynb \
   --log-output
 
@@ -156,11 +172,17 @@ papermill notebooks_clean/01_data_loading.ipynb executed_notebooks/01_data_loadi
 # Check for errors in the output
 ```
 
-If this works, you're ready to proceed!
+If this works, you're ready to proceed! Exit the interactive session when done:
+
+```bash
+exit
+```
 
 ---
 
-## Step 11: Submit All Notebooks (Option C - Sequential)
+## Step 12: Submit All Notebooks (Option C - Sequential)
+
+**Back on the login node** (after exiting your interactive session), run:
 
 ```bash
 # Copy and paste this entire block:
