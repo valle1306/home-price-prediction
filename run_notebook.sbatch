@@ -1,66 +1,130 @@
-#!/bin/bash#!/bin/bash
+#!/bin/bash#!/bin/bash#!/bin/bash
 
-#SBATCH --job-name=notebook_run# Single-notebook sbatch runner for Amarel (adjust resources as needed)
+#SBATCH --job-name=hp_notebook
 
-#SBATCH --output=logs/notebook_%j.out# Usage: sbatch run_notebook.sbatch -- NOTEBOOK=notebooks_clean/02_preprocessing.ipynb
+#SBATCH --output=logs/notebook_%j.out#SBATCH --job-name=notebook_run# Single-notebook sbatch runner for Amarel (adjust resources as needed)
 
 #SBATCH --error=logs/notebook_%j.err
 
-#SBATCH --time=04:00:00#SBATCH --job-name=hp_nb
+#SBATCH --time=04:00:00#SBATCH --output=logs/notebook_%j.out# Usage: sbatch run_notebook.sbatch -- NOTEBOOK=notebooks_clean/02_preprocessing.ipynb
 
-#SBATCH --mem=32G#SBATCH --output=slurm-%j.out
+#SBATCH --mem=32G
 
-#SBATCH --cpus-per-task=8#SBATCH --error=slurm-%j.err
+#SBATCH --cpus-per-task=8#SBATCH --error=logs/notebook_%j.err
 
-#SBATCH --partition=main#SBATCH --time=06:00:00
+#SBATCH --partition=main
 
-#SBATCH --partition=compute
-
-# Single notebook execution script for Amarel#SBATCH --ntasks=1
-
-# Usage: sbatch run_notebook.sbatch <notebook_name.ipynb>#SBATCH --cpus-per-task=8
-
-# Example: sbatch run_notebook.sbatch notebooks_clean/02_preprocessing.ipynb#SBATCH --mem=32G
-
-#SBATCH --mail-type=END,FAIL
-
-NOTEBOOK=$1#SBATCH --mail-user=you@example.com
+#SBATCH --ntasks=1#SBATCH --time=04:00:00#SBATCH --job-name=hp_nb
 
 
 
-if [ -z "$NOTEBOOK" ]; thenset -euo pipefail
+# Single notebook execution script for Amarel#SBATCH --mem=32G#SBATCH --output=slurm-%j.out
+
+# Usage: sbatch run_notebook.sbatch <notebook_path>
+
+# Example: sbatch run_notebook.sbatch notebooks_clean/02_preprocessing.ipynb#SBATCH --cpus-per-task=8#SBATCH --error=slurm-%j.err
+
+
+
+set -euo pipefail#SBATCH --partition=main#SBATCH --time=06:00:00
+
+
+
+NOTEBOOK=$1#SBATCH --partition=compute
+
+
+
+if [ -z "$NOTEBOOK" ]; then# Single notebook execution script for Amarel#SBATCH --ntasks=1
 
     echo "Error: No notebook specified"
 
-    echo "Usage: sbatch run_notebook.sbatch <notebook_path>"echo "Starting single-notebook job on $(hostname)"
+    echo "Usage: sbatch run_notebook.sbatch <notebook_path>"# Usage: sbatch run_notebook.sbatch <notebook_name.ipynb>#SBATCH --cpus-per-task=8
 
     exit 1
 
-fi# Allow notebook override from sbatch -- NOTEBOOK=...
+fi# Example: sbatch run_notebook.sbatch notebooks_clean/02_preprocessing.ipynb#SBATCH --mem=32G
 
-NOTEBOOK=${NOTEBOOK:-"notebooks_clean/02_preprocessing.ipynb"}
 
-echo "=========================================="
 
-echo "Running notebook: $NOTEBOOK"# Location on cluster
+echo "=========================================="#SBATCH --mail-type=END,FAIL
 
-echo "Job ID: $SLURM_JOB_ID"SCRATCH_DIR=${SCRATCH:-/scratch/$USER}/home-price-prediction
+echo "Running notebook: $NOTEBOOK"
 
-echo "Node: $SLURM_NODELIST"mkdir -p "$SCRATCH_DIR"
+echo "Job ID: $SLURM_JOB_ID"NOTEBOOK=$1#SBATCH --mail-user=you@example.com
+
+echo "Node: $SLURM_NODELIST"
 
 echo "Start time: $(date)"
 
-echo "=========================================="echo "Working dir: $SCRATCH_DIR"
+echo "=========================================="
+
+if [ -z "$NOTEBOOK" ]; thenset -euo pipefail
+
+# Initialize conda
+
+source "$HOME/.bashrc" >/dev/null 2>&1 || true    echo "Error: No notebook specified"
+
+conda activate home-price-env
+
+    echo "Usage: sbatch run_notebook.sbatch <notebook_path>"echo "Starting single-notebook job on $(hostname)"
+
+# Create output directory
+
+mkdir -p executed_notebooks    exit 1
 
 
+
+# Get notebook namefi# Allow notebook override from sbatch -- NOTEBOOK=...
+
+NOTEBOOK_NAME=$(basename "$NOTEBOOK")
+
+OUTPUT_NOTEBOOK="executed_notebooks/${NOTEBOOK_NAME}"NOTEBOOK=${NOTEBOOK:-"notebooks_clean/02_preprocessing.ipynb"}
+
+
+
+echo "Executing $NOTEBOOK -> $OUTPUT_NOTEBOOK"echo "=========================================="
+
+
+
+# Run notebook using papermillecho "Running notebook: $NOTEBOOK"# Location on cluster
+
+papermill "$NOTEBOOK" "$OUTPUT_NOTEBOOK" \
+
+    --log-output \echo "Job ID: $SLURM_JOB_ID"SCRATCH_DIR=${SCRATCH:-/scratch/$USER}/home-price-prediction
+
+    --progress-bar
+
+echo "Node: $SLURM_NODELIST"mkdir -p "$SCRATCH_DIR"
+
+EXIT_CODE=$?
+
+echo "Start time: $(date)"
+
+echo "=========================================="
+
+echo "Notebook execution completed"echo "=========================================="echo "Working dir: $SCRATCH_DIR"
+
+echo "Exit code: $EXIT_CODE"
+
+echo "End time: $(date)"
+
+echo "=========================================="
 
 # Load conda module (adjust based on Amarel's module system)cd "$SCRATCH_DIR"
 
-module purge
+if [ $EXIT_CODE -eq 0 ]; then
 
-module load condaecho "Activating environment..."
+    echo "SUCCESS: Notebook executed successfully"module purge
 
-# Load conda module if available - adjust to your cluster modules
+    echo "Output saved to: $OUTPUT_NOTEBOOK"
+
+elsemodule load condaecho "Activating environment..."
+
+    echo "ERROR: Notebook execution failed with code $EXIT_CODE"
+
+    exit $EXIT_CODE# Load conda module if available - adjust to your cluster modules
+
+fi
 
 # Activate your conda environmentmodule load anaconda || true
 
