@@ -14,151 +14,69 @@
 
 #SBATCH --partition=main
 
-#SBATCH --ntasks=1#SBATCH --time=04:00:00#SBATCH --job-name=hp_nb
+#!/bin/bash
 
-
-
-# Single notebook execution script for Amarel#SBATCH --mem=32G#SBATCH --output=slurm-%j.out
-
+# Single-notebook sbatch runner for Amarel (clean, robust)
 # Usage: sbatch run_notebook.sbatch <notebook_path>
 
-# Example: sbatch run_notebook.sbatch notebooks_clean/02_preprocessing.ipynb#SBATCH --cpus-per-task=8#SBATCH --error=slurm-%j.err
+#SBATCH --job-name=hp_notebook
+#SBATCH --output=logs/notebook_%j.out
+#SBATCH --error=logs/notebook_%j.err
+#SBATCH --time=06:00:00
+#SBATCH --partition=main
+#SBATCH --mem=32G
+#SBATCH --cpus-per-task=8
+#SBATCH --ntasks=1
 
+set -euo pipefail
 
+# NOTEBOOK can be passed as first positional arg or via environment variable NOTEBOOK
+NOTEBOOK=${1:-${NOTEBOOK:-}}
 
-set -euo pipefail#SBATCH --partition=main#SBATCH --time=06:00:00
-
-
-
-NOTEBOOK=$1#SBATCH --partition=compute
-
-
-
-if [ -z "$NOTEBOOK" ]; then# Single notebook execution script for Amarel#SBATCH --ntasks=1
-
+if [ -z "$NOTEBOOK" ]; then
     echo "Error: No notebook specified"
-
-    echo "Usage: sbatch run_notebook.sbatch <notebook_path>"# Usage: sbatch run_notebook.sbatch <notebook_name.ipynb>#SBATCH --cpus-per-task=8
-
+    echo "Usage: sbatch run_notebook.sbatch <notebook_path>"
     exit 1
-
-fi# Example: sbatch run_notebook.sbatch notebooks_clean/02_preprocessing.ipynb#SBATCH --mem=32G
-
-
-
-echo "=========================================="#SBATCH --mail-type=END,FAIL
-
-echo "Running notebook: $NOTEBOOK"
-
-echo "Job ID: $SLURM_JOB_ID"NOTEBOOK=$1#SBATCH --mail-user=you@example.com
-
-echo "Node: $SLURM_NODELIST"
-
-echo "Start time: $(date)"
-
-echo "=========================================="
-
-if [ -z "$NOTEBOOK" ]; thenset -euo pipefail
-
-# Initialize conda
-
-source "$HOME/.bashrc" >/dev/null 2>&1 || true    echo "Error: No notebook specified"
-
-conda activate home-price-env
-
-    echo "Usage: sbatch run_notebook.sbatch <notebook_path>"echo "Starting single-notebook job on $(hostname)"
-
-# Create output directory
-
-mkdir -p executed_notebooks    exit 1
-
-
-
-# Get notebook namefi# Allow notebook override from sbatch -- NOTEBOOK=...
-
-NOTEBOOK_NAME=$(basename "$NOTEBOOK")
-
-OUTPUT_NOTEBOOK="executed_notebooks/${NOTEBOOK_NAME}"NOTEBOOK=${NOTEBOOK:-"notebooks_clean/02_preprocessing.ipynb"}
-
-
-
-echo "Executing $NOTEBOOK -> $OUTPUT_NOTEBOOK"echo "=========================================="
-
-
-
-# Run notebook using papermillecho "Running notebook: $NOTEBOOK"# Location on cluster
-
-papermill "$NOTEBOOK" "$OUTPUT_NOTEBOOK" \
-
-    --log-output \echo "Job ID: $SLURM_JOB_ID"SCRATCH_DIR=${SCRATCH:-/scratch/$USER}/home-price-prediction
-
-    --progress-bar
-
-echo "Node: $SLURM_NODELIST"mkdir -p "$SCRATCH_DIR"
-
-EXIT_CODE=$?
-
-echo "Start time: $(date)"
-
-echo "=========================================="
-
-echo "Notebook execution completed"echo "=========================================="echo "Working dir: $SCRATCH_DIR"
-
-echo "Exit code: $EXIT_CODE"
-
-echo "End time: $(date)"
-
-echo "=========================================="
-
-# Load conda module (adjust based on Amarel's module system)cd "$SCRATCH_DIR"
-
-if [ $EXIT_CODE -eq 0 ]; then
-
-    echo "SUCCESS: Notebook executed successfully"module purge
-
-    echo "Output saved to: $OUTPUT_NOTEBOOK"
-
-elsemodule load condaecho "Activating environment..."
-
-    echo "ERROR: Notebook execution failed with code $EXIT_CODE"
-
-    exit $EXIT_CODE# Load conda module if available - adjust to your cluster modules
-
 fi
 
-# Activate your conda environmentmodule load anaconda || true
+echo "=========================================="
+echo "Running notebook: $NOTEBOOK"
+echo "Job ID: ${SLURM_JOB_ID:-LOCAL}"
+echo "Node: ${SLURM_NODELIST:-LOCAL}"
+echo "Start time: $(date)"
+echo "=========================================="
 
-source activate home-price-envsource "$HOME/.bashrc" >/dev/null 2>&1 || true
+# Ensure output dirs exist (use working dir of the job)
+mkdir -p logs executed_notebooks
 
-conda activate hp || echo "Activate failed - ensure env 'hp' exists"
+# Initialize conda - try standard locations used on Amarel
+if [ -f "$HOME/miniconda3/etc/profile.d/conda.sh" ]; then
+    source "$HOME/miniconda3/etc/profile.d/conda.sh"
+elif [ -f "/home/${USER}/miniconda3/etc/profile.d/conda.sh" ]; then
+    source "/home/${USER}/miniconda3/etc/profile.d/conda.sh"
+else
+    # fallback to .bashrc (may already initialize conda)
+    source "$HOME/.bashrc" >/dev/null 2>&1 || true
+fi
 
-# Create output directory for executed notebooks
+# Activate the environment (best-effort)
+if command -v conda >/dev/null 2>&1; then
+    conda activate home-price-env || true
+fi
 
-mkdir -p executed_notebooksmkdir -p executed
+OUTPUT_NOTEBOOK="executed_notebooks/$(basename "$NOTEBOOK")"
 
-OUT=executed/$(basename "${NOTEBOOK%.*}")_$(date +%Y%m%d-%H%M%S).ipynb
+echo "Executing $NOTEBOOK -> $OUTPUT_NOTEBOOK"
 
-# Get notebook name without path
-
-NOTEBOOK_NAME=$(basename "$NOTEBOOK")echo "Executing $NOTEBOOK -> $OUT"
-
-OUTPUT_NOTEBOOK="executed_notebooks/${NOTEBOOK_NAME}"# Use papermill if available for better logging; fallback to nbconvert
-
+# Run notebook using papermill (preferred)
 if command -v papermill >/dev/null 2>&1; then
-
-# Run notebook using papermill (preserves output)  papermill "$NOTEBOOK" "$OUT" -k python3 --log-output
-
-echo "Executing notebook with papermill..."else
-
-papermill "$NOTEBOOK" "$OUTPUT_NOTEBOOK" \  jupyter nbconvert --to notebook --execute "$NOTEBOOK" --output "$OUT" --ExecutePreprocessor.timeout=0
-
-    --log-output \fi
-
-    --progress-bar
-
-echo "Notebook finished. Output saved to $OUT"
-
-EXIT_CODE=$?
+    papermill "$NOTEBOOK" "$OUTPUT_NOTEBOOK" --log-output --progress-bar
+    EXIT_CODE=$?
+else
+    # Fallback to nbconvert execute
+    jupyter nbconvert --to notebook --execute "$NOTEBOOK" --output "$OUTPUT_NOTEBOOK" --ExecutePreprocessor.timeout=0
+    EXIT_CODE=$?
+fi
 
 echo "=========================================="
 echo "Notebook execution completed"
@@ -169,7 +87,9 @@ echo "=========================================="
 if [ $EXIT_CODE -eq 0 ]; then
     echo "SUCCESS: Notebook executed successfully"
     echo "Output saved to: $OUTPUT_NOTEBOOK"
+    exit 0
 else
-    echo "ERROR: Notebook execution failed"
+    echo "ERROR: Notebook execution failed with code $EXIT_CODE"
     exit $EXIT_CODE
 fi
+    --progress-bar
