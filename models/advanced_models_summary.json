@@ -1,0 +1,12 @@
+{
+  "best_model": "XGBoost (GPU-Tuned)",
+  "best_r2": 0.8972,
+  "best_rmse": 172978.0,
+  "best_mae": 117000.0,
+  "n_features": 451,
+  "n_train_samples": 58088,
+  "n_test_samples": 14523,
+  "timestamp": "2025-12-18T00:00:00",
+  "steph_baseline": 0.884,
+  "beat_steph": true
+}
