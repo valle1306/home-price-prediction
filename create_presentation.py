@@ -206,7 +206,14 @@ def create_presentation():
     ROOT = Path(__file__).parent
     MODELS_DIR = ROOT / 'models'
     
-    # Try to load XGBoost metrics
+    # Try to load ensemble summary (new format)
+    ensemble_summary = {}
+    ensemble_path = MODELS_DIR / 'ensemble_summary.json'
+    if ensemble_path.exists():
+        with open(ensemble_path) as f:
+            ensemble_summary = json.load(f)
+    
+    # Try to load XGBoost metrics (fallback)
     xgb_metrics = {}
     xgb_path = MODELS_DIR / 'xgboost_enhanced_metrics.json'
     if xgb_path.exists():
@@ -219,6 +226,16 @@ def create_presentation():
         with open(baseline_path) as f:
             baseline_summary = json.load(f)
     
+    # Use ensemble results if available, fallback to XGBoost
+    if ensemble_summary:
+        best_r2 = ensemble_summary.get('test_r2', 0.8561)
+        best_rmse = ensemble_summary.get('rmse', 321335)
+        best_model = ensemble_summary.get('best_model', 'XGB+LGB Blend')
+    else:
+        best_r2 = xgb_metrics.get('test_metrics', {}).get('r2', 0.8506)
+        best_rmse = xgb_metrics.get('test_metrics', {}).get('rmse', 327396)
+        best_model = 'XGBoost GPU-Tuned'
+    
     # === SLIDE 1: Title ===
     add_title_slide(prs, 
         "Home Price Prediction",
@@ -227,10 +244,10 @@ def create_presentation():
     
     # === SLIDE 2: Project Overview ===
     add_content_slide(prs, "Project Overview", [
-        "Objective: Predict home prices with 85%+ accuracy (R² score)",
-        "Data: NJ MLS real estate transactions (January - August 2025)",
-        "72,611 total properties • 58,088 training • 14,523 testing",
-        "451 features including location, property details, and amenities",
+        "Objective: Predict home prices with high accuracy (targeting 88.4% R²)",
+        "Data: Louisiana MLS real estate transactions (January - August 2025)",
+        "173,070 total properties • 150,311 training • 22,759 testing",
+        "1,022 engineered features including location, property details, and amenities",
         "Chronological train/test split (months 1-7 / month 8)",
         "Benchmark to beat: Steph's Random Forest at 88.4% R²"
     ])
@@ -240,102 +257,98 @@ def create_presentation():
         "Data Pipeline: Load → Clean → Feature Engineer → Train → Evaluate",
         "Feature Engineering: Sanitized names, building age, geographic encoding",
         "Leakage Prevention: Removed ListPrice, CloseDate, agent/office info",
-        "Models Tested: Linear Regression, Ridge, Lasso, Random Forest",
-        "Advanced Models: XGBoost, LightGBM, CatBoost, Neural Networks",
+        "Baseline Models: Linear Regression, Ridge, Lasso, Random Forest",
+        "Advanced Models: XGBoost (GPU), LightGBM, CatBoost, Neural Networks",
         "Ensemble Methods: Voting, Stacking, Weighted Blending",
         "Hyperparameter Tuning: 3-stage RandomizedSearchCV with GPU acceleration"
     ])
     
     # === SLIDE 4: XGBoost Architecture ===
-    add_content_slide(prs, "XGBoost GPU-Accelerated Tuning", [
-        "Stage 1: Broad search (20 iterations, CV=3) over wide parameter ranges",
-        "Stage 2: Refined search (25 iterations) around best parameters",
-        "Stage 3: Final training with 2000 estimators + early stopping",
-        "GPU Acceleration: device='cuda' for 10-15x speedup on Amarel cluster",
-        "Key Parameters: learning_rate, max_depth, subsample, colsample_bytree",
-        "Regularization: reg_alpha (L1), reg_lambda (L2), gamma (min split loss)",
+    add_content_slide(prs, "XGBoost & LightGBM GPU-Accelerated Tuning", [
+        "XGBoost: 3-stage tuning (broad → refined → final training)",
+        "LightGBM: RandomizedSearchCV with 20 iterations, 3-fold CV",
+        "GPU Acceleration: device='cuda' for XGBoost on Amarel cluster",
+        "LightGBM: CPU mode with parallel processing (n_jobs=-1)",
+        "Key Parameters: learning_rate, num_leaves, max_depth, colsample",
+        "Regularization: reg_alpha (L1), reg_lambda (L2) for both models",
         "Early Stopping: 50 rounds patience to prevent overfitting"
     ])
     
     # === SLIDE 5: Results ===
-    test_r2 = xgb_metrics.get('test_metrics', {}).get('r2', 0.897)
-    test_rmse = xgb_metrics.get('test_metrics', {}).get('rmse', 173000)
-    train_r2 = xgb_metrics.get('train_metrics', {}).get('r2', 0.995)
-    
     add_results_slide(prs, "Model Performance Results", [
-        ("Test R² Score", f"{test_r2*100:.1f}%"),
-        ("RMSE", f"${test_rmse:,.0f}"),
-        ("Train R² Score", f"{train_r2*100:.1f}%"),
-        ("Training Samples", "58,088"),
-        ("Test Samples", "14,523"),
-        ("Features Used", "451"),
+        ("Best R² Score", f"{best_r2*100:.2f}%"),
+        ("RMSE", f"${best_rmse:,.0f}"),
+        ("Best Model", best_model.replace('_', ' ')),
+        ("Training Samples", "150,311"),
+        ("Test Samples", "22,759"),
+        ("Features Used", "1,022"),
     ])
     
     # === SLIDE 6: Model Comparison ===
     add_content_slide(prs, "Model Comparison", [
-        f"XGBoost (GPU-Tuned): {test_r2*100:.1f}% R² ✓ TARGET ACHIEVED",
+        f"Weighted Blend (10% XGB + 90% LGB): 85.61% R² ← BEST",
+        "LightGBM (Tuned): 85.60% R²",
+        "XGBoost (GPU-Tuned): 85.06% R²",
+        "Stacking (XGB + LGB + Ridge meta): 83.95% R²",
+        "Voting (XGB + LGB average): 83.25% R²",
         "Random Forest Baseline: 88.4% R² (Steph's benchmark)",
-        "Ridge Regression: 81.3% R²",
-        "Lasso Regression: 81.3% R²",
-        "Linear Regression: 81.3% R²",
-        f"Improvement over Linear: +{(test_r2-0.813)*100:.1f} percentage points",
-        f"Improvement over Steph: +{(test_r2-0.884)*100:.1f} percentage points"
+        f"Gap to Steph: -2.79 percentage points (room for improvement)"
     ])
     
     # === SLIDE 7: Key Features ===
     add_content_slide(prs, "Top Predictive Features", [
         "Living Area (sq ft) - Most important predictor",
         "Building Age - Derived from YearBuilt",
-        "Geographic Location - City, County, Postal Code",
+        "Geographic Location - City, MLSAreaMajor, Postal Code (target encoded)",
         "Bedrooms & Bathrooms - Core property attributes",
         "Garage Spaces - Storage and parking value",
         "Property Type - Single Family, Condo, Multi-Family",
-        "School District - Major factor in home values"
+        "Property Condition & Quality - Assessor ratings"
     ])
     
     # === SLIDE 8: Technical Stack ===
     add_content_slide(prs, "Technical Implementation", [
-        "Python 3.10+ with scikit-learn, XGBoost, LightGBM, CatBoost",
-        "GPU: NVIDIA CUDA via device='cuda' on Amarel cluster",
-        "Data Processing: pandas, numpy for 72K+ records",
-        "Visualization: matplotlib, seaborn, plotly",
-        "Web App: Streamlit for interactive predictions",
+        "Python 3.9+ with scikit-learn, XGBoost 2.1, LightGBM 3.3",
+        "GPU: NVIDIA CUDA via device='cuda' on Amarel HPC cluster",
+        "Data Processing: pandas, numpy for 173K+ records × 1K features",
+        "Feature Names: Sanitized for LightGBM JSON compatibility",
+        "Web App: Streamlit with plotly for interactive predictions",
         "Notebooks: Jupyter for reproducible analysis pipeline",
-        "Version Control: Git for code management"
+        "SLURM: Job submission for HPC GPU computing"
     ])
     
     # === SLIDE 9: Challenges & Solutions ===
     add_content_slide(prs, "Challenges & Solutions", [
-        "Challenge: Large dataset (72K records × 451 features)",
-        "Solution: GPU acceleration + efficient data loading",
-        "Challenge: Data leakage from price-related features",
-        "Solution: Careful feature removal (ListPrice, CloseDate)",
-        "Challenge: Hyperparameter space too large",
-        "Solution: 3-stage tuning (broad → refined → final)",
-        "Challenge: Model overfitting (99.5% train R²)",
-        "Solution: Early stopping + regularization"
+        "Challenge: Large dataset (150K records × 1,022 features)",
+        "Solution: GPU acceleration + efficient memory management",
+        "Challenge: Feature name compatibility (LightGBM JSON limits)",
+        "Solution: Sanitize names (replace commas, spaces with underscores)",
+        "Challenge: LightGBM GPU build not available on cluster",
+        "Solution: Use CPU mode with n_jobs=-1 (still fast: 21s training)",
+        "Challenge: Gap to Steph's 88.4% baseline",
+        "Solution: Ensemble blending brought us from 84.68% to 85.61%"
     ])
     
     # === SLIDE 10: Future Work ===
     add_content_slide(prs, "Future Improvements", [
-        "Feature Engineering: Add more derived features (price/sqft ratios)",
-        "Ensemble Optimization: Tune voting/stacking weights",
-        "Deep Learning: Explore neural networks for non-linear patterns",
-        "Time Series: Add temporal features for market trends",
-        "External Data: Incorporate economic indicators, interest rates",
-        "Deployment: Scale web app for production use",
-        "Monitoring: Track model drift over time"
+        "Feature Engineering: More geographic/neighborhood features",
+        "Ensemble Optimization: Grid search over blend weights",
+        "Deep Learning: Neural networks for complex patterns",
+        "CatBoost: Not tested yet - native categorical handling",
+        "Time Series: Add temporal market trend features",
+        "External Data: Economic indicators, interest rates, school ratings",
+        "Target: Close the 2.79% gap to Steph's 88.4% baseline"
     ])
     
     # === SLIDE 11: Conclusion ===
     add_content_slide(prs, "Conclusion", [
-        f"Successfully achieved {test_r2*100:.1f}% R² on test set",
-        "Exceeded 85% target and beat Steph's 88.4% baseline",
-        f"RMSE of ${test_rmse:,.0f} - average prediction error",
-        "XGBoost with GPU tuning proved most effective",
-        "Clean, reproducible pipeline for future updates",
+        f"Achieved {best_r2*100:.2f}% R² on test set with {best_model}",
+        "Best result: Weighted Blend (10% XGBoost + 90% LightGBM)",
+        f"RMSE of ${best_rmse:,.0f} - average prediction error",
+        "Gap to Steph's 88.4%: 2.79 percentage points remaining",
+        "Clean, reproducible pipeline validated on Amarel HPC",
         "Web application ready for interactive predictions",
-        "Foundation for production real estate valuation system"
+        "Strong foundation for continued improvement"
     ])
     
     # === SLIDE 12: Thank You ===

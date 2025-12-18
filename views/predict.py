@@ -12,13 +12,13 @@ def show(model, model_name, metadata):
     
     st.markdown("""
     <div class="hero">
-        <h1>🎯 Predict Home Price</h1>
+        <h1>Predict Home Price</h1>
         <p>Enter property details to get an instant valuation</p>
     </div>
     """, unsafe_allow_html=True)
     
     if model is None:
-        st.error("⚠️ Model not loaded. Please check the models directory.")
+        st.error("Model not loaded. Please check the models directory.")
         return
     
     # Get expected features
@@ -33,7 +33,7 @@ def show(model, model_name, metadata):
     st.markdown("## Property Details")
     
     # Create tabs for different input methods
-    tab1, tab2 = st.tabs(["📝 Simple Form", "🔧 Advanced"])
+    tab1, tab2 = st.tabs(["Simple Form", "Advanced"])
     
     with tab1:
         st.markdown("### Basic Information")
@@ -64,10 +64,9 @@ def show(model, model_name, metadata):
             condition = st.selectbox("Condition", ["Excellent", "Good", "Average", "Fair", "Poor"])
         
         # Predict button
-        if st.button("🔮 Predict Price", use_container_width=True, type="primary"):
+        if st.button("Predict Price", use_container_width=True, type="primary"):
             with st.spinner("Analyzing property..."):
                 # Create a feature vector (simplified for demo)
-                # In production, this would use the full feature set
                 features = {
                     'LivingArea': living_area,
                     'BedroomsTotal': bedrooms,
@@ -77,14 +76,28 @@ def show(model, model_name, metadata):
                     'StoriesTotal': stories,
                 }
                 
-                # For demo, create a dummy dataframe with all expected features
-                # Set most to 0 and only fill in what we have
-                X = pd.DataFrame(0, index=[0], columns=expected_features if expected_features else features.keys())
+                # Sanitize feature names (match training data)
+                def sanitize_name(name):
+                    return name.replace(',', '_').replace(' ', '_').replace('-', '_').replace('[', '_').replace(']', '_').replace('<', '_').replace('>', '_').replace('(', '_').replace(')', '_')
                 
-                # Fill in the features we have
+                # Create dataframe with sanitized feature names
+                if expected_features:
+                    sanitized_features = [sanitize_name(f) for f in expected_features]
+                    X = pd.DataFrame(0.0, index=[0], columns=sanitized_features)
+                else:
+                    X = pd.DataFrame(0.0, index=[0], columns=[sanitize_name(k) for k in features.keys()])
+                
+                # Fill in the features we have (try both original and sanitized names)
                 for key, value in features.items():
-                    if key in X.columns:
-                        X[key] = value
+                    san_key = sanitize_name(key)
+                    if san_key in X.columns:
+                        X[san_key] = float(value)
+                    elif key in X.columns:
+                        X[key] = float(value)
+                
+                # Add BuildingAge feature if YearBuilt columns exist
+                if 'BuildingAge' in X.columns:
+                    X['BuildingAge'] = 2025 - year_built
                 
                 try:
                     # Make prediction
@@ -133,7 +146,7 @@ def show(model, model_name, metadata):
                         """, unsafe_allow_html=True)
                     
                     # Property summary
-                    st.markdown("### 📋 Property Summary")
+                    st.markdown("### Property Summary")
                     
                     summary_col1, summary_col2 = st.columns(2)
                     
@@ -153,7 +166,7 @@ def show(model, model_name, metadata):
                         - **Condition:** {condition}
                         """)
                     
-                    st.info("💡 **Tip:** This prediction is based on historical data and market trends. Actual sale prices may vary based on current market conditions, negotiation, and other factors.")
+                    st.info("**Note:** This prediction is based on historical data and market trends. Actual sale prices may vary based on current market conditions, negotiation, and other factors.")
                     
                 except Exception as e:
                     st.error(f"❌ Prediction failed: {e}")
@@ -161,7 +174,7 @@ def show(model, model_name, metadata):
     
     with tab2:
         st.markdown("### Advanced Feature Input")
-        st.warning("⚠️ For demonstration purposes. In production, this would include all 1,020 features with proper encoding.")
+        st.warning("For demonstration purposes. In production, this would include all 1,020 features with proper encoding.")
         
         if expected_features:
             st.markdown(f"**Model expects {len(expected_features)} features**")
@@ -174,4 +187,4 @@ def show(model, model_name, metadata):
             if len(expected_features) > 20:
                 st.markdown(f"... and {len(expected_features) - 20} more features")
         
-        st.info("💡 **Note:** The advanced feature input is designed for API integration or batch predictions. Use the Simple Form for manual predictions.")
+        st.info("**Note:** The advanced feature input is designed for API integration or batch predictions. Use the Simple Form for manual predictions.")
